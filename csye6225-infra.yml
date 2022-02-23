@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS VPC creation using Cloud Formation 
+Parameters:
+  VPCCidrBlock:
+    Description: "VPC Classless Inter-Domain Routing Block"
+    Type: String
+    Default: "10.0.0.0/16"
+  CIDRBlocSubnet1: 
+    Type: String
+    Default: "10.1.1.0/16"
+  CIDRBlocSubnet2: 
+    Type: String
+    Default: "10.1.2.0/16"
+  CIDRBlocSubnet3: 
+    Type: String
+    Default: "10.1.3.0/16"
+  AvailabilityZone1:
+    Type: String
+    Default: "a"
+  AvailabilityZone2:
+    Type: String
+    Default: "b"
+  AvailabilityZone3:
+    Type: String
+    Default: "c"
+Resources:
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCCidrBlock    
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+      - Key: Name
+        Value: 
+          !Join
+            - ''
+            - - !Ref AWS::StackName
+  mysubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Ref CIDRBlocSubnet1
+      AvailabilityZone: 
+        !Join
+          - ''
+          - - !Ref AWS::Region
+            - !Ref AvailabilityZone1     # need to change
+      Tags:
+      - Key: Name
+        Value: 
+          !Join
+            - ''
+            - - !Ref AWS::StackName
+              - !Ref AWS::Region
+              - !Ref AvailabilityZone1     # need to change
+  mysubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Ref CIDRBlocSubnet2
+      AvailabilityZone: 
+        !Join
+          - ''
+          - - !Ref AWS::Region
+            - !Ref AvailabilityZone2   # need to change
+      Tags:
+      - Key: Name
+        Value: 
+          !Join
+            - ''
+            - - !Ref AWS::StackName
+              - !Ref AWS::Region
+              - !Ref AvailabilityZone2     # need to change
+  mysubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Ref CIDRBlocSubnet3
+      AvailabilityZone: 
+        !Join
+          - ''
+          - - !Ref AWS::Region
+            - !Ref AvailabilityZone3    #"us-east-1a"   # need to change   
+      Tags:
+      - Key: Name
+        Value: 
+          !Join
+            - ''
+            - - !Ref AWS::StackName
+              - !Ref AWS::Region
+              - !Ref AvailabilityZone3     # need to change
+  myInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: 
+          !Join
+            - ''
+            - - !Ref AWS::StackName
+              - !Ref AWS::Region
+              - 'InternetGateway'
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn:
+      - myInternetGateway
+    Properties:
+      VpcId:
+        Ref: myVPC
+      InternetGatewayId:
+        Ref: myInternetGateway
+  myRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: Name
+        Value: 
+          !Join
+            - ''
+            - - !Ref AWS::StackName
+              - !Ref AWS::Region
+              - 'RouteTable'
+  mySubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+      - mysubnet1
+      - myRouteTable
+      - AttachGateway
+    Properties:
+      SubnetId:
+        Ref: mysubnet1
+      RouteTableId:
+        Ref: myRouteTable
+  mySubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+      - mysubnet2
+      - myRouteTable
+      - AttachGateway
+    Properties:
+      SubnetId:
+        Ref: mysubnet2
+      RouteTableId:
+        Ref: myRouteTable
+  mySubnetRouteTableAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+      - mysubnet3
+      - myRouteTable
+      - AttachGateway
+    Properties:
+      SubnetId:
+        Ref: mysubnet3
+      RouteTableId:
+        Ref: myRouteTable
+  myRoute:
+    Type: AWS::EC2::Route
+    DependsOn: 
+      - myInternetGateway
+      - myRouteTable
+    Properties:
+      RouteTableId:
+        Ref: myRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: myInternetGateway   
+Outputs:
+  StackVPC:
+    Description: The ID of the VPC
+    Value: !Ref myVPC
+    Export:
+      Name: !Sub "${AWS::StackName}-VPCID"
