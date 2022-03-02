@@ -23,6 +23,9 @@ Parameters:
   AvailabilityZone3:
     Type: String
     Default: "c"
+  AmiImageId:
+    Type: String
+    Default: ""
 Resources:
   myVPC:
     Type: AWS::EC2::VPC
@@ -39,6 +42,7 @@ Resources:
   mysubnet1:
     Type: AWS::EC2::Subnet
     Properties:
+      MapPublicIpOnLaunch: true
       VpcId: !Ref myVPC
       CidrBlock: !Ref CIDRBlocSubnet1
       AvailabilityZone: 
@@ -57,6 +61,7 @@ Resources:
   mysubnet2:
     Type: AWS::EC2::Subnet
     Properties:
+      MapPublicIpOnLaunch: true
       VpcId: !Ref myVPC
       CidrBlock: !Ref CIDRBlocSubnet2
       AvailabilityZone: 
@@ -75,6 +80,7 @@ Resources:
   mysubnet3:
     Type: AWS::EC2::Subnet
     Properties:
+      MapPublicIpOnLaunch: true
       VpcId: !Ref myVPC
       CidrBlock: !Ref CIDRBlocSubnet3
       AvailabilityZone: 
@@ -167,6 +173,46 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId:
         Ref: myInternetGateway   
+  myApplicationSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Web application security group
+      VpcId:
+        Ref: myVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8081
+          ToPort: 8081
+          CidrIp: 0.0.0.0/0
+      Tags:
+      - Key: Name
+        Value: !Sub '${AWS::StackName}-application-security-group'
+  myEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiImageId
+      InstanceType: "t2.micro"
+      SubnetId: !Ref mysubnet1
+      SecurityGroupIds: [!Ref myApplicationSecurityGroup]
+      DisableApiTermination: "false"
+      BlockDeviceMappings:
+      - DeviceName: "/dev/xvda"
+        Ebs: 
+          VolumeType: "gp2"
+          DeleteOnTermination: "true"
+          VolumeSize: "20"
 Outputs:
   StackVPC:
     Description: The ID of the VPC
