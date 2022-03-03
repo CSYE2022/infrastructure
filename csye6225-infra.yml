@@ -177,6 +177,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Web application security group
+      GroupName: application
       VpcId:
         Ref: myVPC
       SecurityGroupIngress:

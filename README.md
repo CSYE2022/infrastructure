@@ -35,17 +35,22 @@ ParameterKey=CIDRBlocSubnet2,ParameterValue="<IP>"
 ParameterKey=CIDRBlocSubnet3,ParameterValue="<IP>"
 ParameterKey=AvailabilityZone1,ParameterValue="<avaiabilityZone(a,b,c)>"
 ParameterKey=AvailabilityZone2,ParameterValue="<avaiabilityZone(a,b,c)>"
+ParameterKey=AmiImageId,ParameterValue="<ami-id>"
 ParameterKey=AvailabilityZone3,ParameterValue="<avaiabilityZone(a,b,c)>"
 --region <region>
 ``` 
 #### Demo for multiple VPCs in same region  
 - To set up first instance  
 ```  
-aws cloudformation create-stack --stack-name demovpc-1 --template-body file://csye6225-infra.yml --parameters ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1
+aws cloudformation create-stack --stack-name demovpc-1 --template-body file://csye6225-infra.yml --parameters 
+ParameterKey=AmiImageId,ParameterValue="ami-0000"
+ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1
 ```  
 - To set up second instance    
 ```  
-aws cloudformation create-stack --stack-name demovpc-2 --template-body file://csye6225-infra.yml --parameters ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1
+aws cloudformation create-stack --stack-name demovpc-2 --template-body file://csye6225-infra.yml --parameters 
+ParameterKey=AmiImageId,ParameterValue="ami-0000"
+ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1
 ```  
 ##### Delete the servers
 ```
@@ -58,11 +63,15 @@ aws cloudformation delete-stack --stack-name demovpc-2 --region us-east-1
 #### Demo for multiple VPCs in different regions  
 - To set up first instance in us-east-1 (N. Virginia)
 ```  
-aws cloudformation create-stack --stack-name demovpc-1 --template-body file://csye6225-infra.yml --parameters ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1
+aws cloudformation create-stack --stack-name demovpc-1 --template-body file://csye6225-infra.yml --parameters 
+ParameterKey=AmiImageId,ParameterValue="ami-0000"
+ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1
 ```  
 - To set up second instance in us-east-2 (Ohio)
 ```  
-aws cloudformation create-stack --stack-name demovpc-2 --template-body file://csye6225-infra.yml --parameters ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-2
+aws cloudformation create-stack --stack-name demovpc-2 --template-body file://csye6225-infra.yml --parameters 
+ParameterKey=AmiImageId,ParameterValue="ami-0000"
+ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-2
 ```  
 ##### Delete the servers
 - Use the following commands to delete the servers you created 
