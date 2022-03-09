@@ -1,6 +1,9 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: AWS VPC creation using Cloud Formation 
 Parameters:
+  VPCName:
+    Type: String
+    Default: "csye6225VPC"  
   VPCCidrBlock:
     Description: "VPC Classless Inter-Domain Routing Block"
     Type: String
@@ -26,6 +29,37 @@ Parameters:
   AmiImageId:
     Type: String
     Default: ""
+Mappings:
+  AZRegions:
+    us-east-1:
+      AZs: ["a", "b", "c"]
+    us-east-2:
+      AZs: ["a", "b", "c"]
+    us-west-1:
+      AZs: ["a", "b"]
+    us-west-2:
+      AZs: ["a", "b", "c"]
+    ap-northeast-1:
+      AZs: ["a", "b", "c"]
+    ap-northeast-2:
+      AZs: ["a", "b", "c"]
+    ap-south-1:
+      AZs: ["a", "b", "c"]
+    ap-southeast-1:
+      AZs: ["a", "b", "c"]
+    ap-southeast-2:
+      AZs: ["a", "b", "c"]
+    ca-central-1:
+      AZs: ["a", "b", "c"]
+    eu-central-1:
+      AZs: ["a", "b", "c"]
+    eu-west-1:
+      AZs: ["a", "b", "c"]
+    eu-west-2:
+      AZs: ["a", "b", "c"]
+    sa-east-1:
+      AZs: ["a", "b", "c"]
+
 Resources:
   myVPC:
     Type: AWS::EC2::VPC
@@ -173,6 +207,110 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId:
         Ref: myInternetGateway   
+
+  PrivateSubnet0:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId:
+        Ref: "myVPC"
+      AvailabilityZone:
+        Fn::Sub:
+          - "${AWS::Region}${AZ}"
+          - AZ: !Select [0, !FindInMap ["AZRegions", !Ref "AWS::Region", "AZs"]]
+      CidrBlock: !Select [3, !Cidr [!GetAtt myVPC.CidrBlock, 6, 10]]
+      MapPublicIpOnLaunch: "true"
+      Tags:
+        - Key: "Name"
+          Value: !Join
+            - ""
+            - - !Ref "AWS::StackName"
+              - "-"
+              - !Ref "VPCName"
+              - "-private-"
+              - !Select [0, !FindInMap ["AZRegions", !Ref "AWS::Region", "AZs"]]
+
+  PrivateSubnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId:
+        Ref: "myVPC"
+      AvailabilityZone:
+        Fn::Sub:
+          - "${AWS::Region}${AZ}"
+          - AZ: !Select [1, !FindInMap ["AZRegions", !Ref "AWS::Region", "AZs"]]
+      CidrBlock: !Select [4, !Cidr [!GetAtt myVPC.CidrBlock, 6, 10]]
+      MapPublicIpOnLaunch: "true"
+      Tags:
+        - Key: "Name"
+          Value: !Join
+            - ""
+            - - !Ref "AWS::StackName"
+              - "-"
+              - !Ref "VPCName"
+              - "-private-"
+              - !Select [1, !FindInMap ["AZRegions", !Ref "AWS::Region", "AZs"]]
+
+
+  PrivateSubnet2:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId:
+        Ref: "myVPC"
+      AvailabilityZone:
+        Fn::Sub:
+          - "${AWS::Region}${AZ}"
+          - AZ: !Select [2, !FindInMap ["AZRegions", !Ref "AWS::Region", "AZs"]]
+      CidrBlock: !Select [5, !Cidr [!GetAtt myVPC.CidrBlock, 6, 10]]
+      MapPublicIpOnLaunch: "true"
+      Tags:
+        - Key: "Name"
+          Value: !Join
+            - ""
+            - - !Ref "AWS::StackName"
+              - "-"
+              - !Ref "VPCName"
+              - "-private-"
+              - !Select [2, !FindInMap ["AZRegions", !Ref "AWS::Region", "AZs"]]
+
+  PrivateRouteTable:
+      Type: "AWS::EC2::RouteTable"
+      Properties:
+        VpcId:
+          Ref: "myVPC"
+        Tags:
+          -
+            Key: "Name"
+            Value: !Join
+              - ''
+              - - !Ref  "AWS::StackName"
+                - "-"
+                - !Ref "VPCName"
+                - '-private-route-table'
+
+  PrivateSubnetRouteTableAssociation0:
+      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Properties:
+        SubnetId:
+          Ref: "PrivateSubnet0"
+        RouteTableId:
+          Ref: "PrivateRouteTable"
+
+  PrivateSubnetRouteTableAssociation1:
+      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Properties:
+        SubnetId:
+          Ref: "PrivateSubnet1"
+        RouteTableId:
+          Ref: "PrivateRouteTable"
+
+  PrivateSubnetRouteTableAssociation2:
+      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Properties:
+        SubnetId:
+          Ref: "PrivateSubnet2"
+        RouteTableId:
+          Ref: "PrivateRouteTable"
+
   myApplicationSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -275,16 +413,16 @@ Resources:
   DBSubnetGroup: 
     Type: "AWS::RDS::DBSubnetGroup"
     DependsOn:
-      - mysubnet1
-      - mysubnet2
-      - mysubnet3
+      - PrivateSubnet0
+      - PrivateSubnet1
+      - PrivateSubnet2
     Properties: 
       DBSubnetGroupDescription: "The DB subnet group for the RDS instance."
       DBSubnetGroupName: "DBSubnetGroup"
       SubnetIds: 
-        - !Ref "mysubnet1"
-        - !Ref "mysubnet2"
-        - !Ref "mysubnet3"
+        - !Ref "PrivateSubnet0"
+        - !Ref "PrivateSubnet1"
+        - !Ref "PrivateSubnet2"
       Tags: 
         - 
           Key: "Name"
