@@ -82,12 +82,8 @@ ParameterKey=AvailabilityZone3,ParameterValue="<avaiabilityZone(a,b,c)>"
 - To set up first instance
 
 ```
+aws cloudformation create-stack --stack-name demovpc-1 --template-body file://csye6225-infra.yml --parameters ParameterKey=S3BucketRegion,ParameterValue=".prod.ebenezerwilliams.me" ParameterKey=AmiImageId,ParameterValue="ami-08b51cfe96a579be1" ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1 --capabilities CAPABILITY_NAMED_IAM
 
-aws cloudformation create-stack --stack-name demovpc-1 --template-body file://csye6225-infra.yml --parameters
-
-ParameterKey=AmiImageId,ParameterValue="ami-0000"
-
-ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1
 
 ```
 
@@ -95,9 +91,18 @@ ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubn
 
 ```
 
-aws cloudformation create-stack --stack-name demovpc-1 --template-body file://csye6225-infra.yml --parameters ParameterKey=AmiImageId,ParameterValue="ami-000" ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1 --capabilities CAPABILITY_NAMED_IAM
+aws cloudformation create-stack --stack-name demovpc-2 --template-body file://csye6225-infra.yml --parameters ParameterKey=S3BucketRegion,ParameterValue=".prod.ebenezerwilliams.me" ParameterKey=AmiImageId,ParameterValue="ami-08b51cfe96a579be1" ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1 --capabilities CAPABILITY_NAMED_IAM
+
 
 ```
+##### Delete S3
+
+- Use the following command to delete the S3 instance.
+
+````
+aws s3 rm s3://1d089840-9ff1-11ec-94b9-125e1d1edc59.dev.ebenezerwilliams.me --recursive
+
+````
 
 ##### Delete the servers
 
