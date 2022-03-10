@@ -29,6 +29,9 @@ Parameters:
   AmiImageId:
     Type: String
     Default: ""
+  S3BucketRegion:
+    Type: String
+    Default: ".prod.ebenezerwilliams.me"
 Mappings:
   AZRegions:
     us-east-1:
@@ -360,7 +363,7 @@ Resources:
       BucketName: !Join
         - ""
         - - !Select [2, !Split [/, !Ref AWS::StackId ]]
-          - ".dev.ebenezerwilliams.me"
+          - !Ref S3BucketRegion
       PublicAccessBlockConfiguration: 
           BlockPublicAcls: true
           BlockPublicPolicy: true
