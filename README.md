@@ -82,7 +82,7 @@ ParameterKey=AvailabilityZone3,ParameterValue="<avaiabilityZone(a,b,c)>"
 - To set up first instance
 
 ```
-aws cloudformation create-stack --stack-name demovpc-1 --template-body file://csye6225-infra.yml --parameters ParameterKey=S3BucketRegion,ParameterValue=".prod.ebenezerwilliams.me" ParameterKey=AmiImageId,ParameterValue="ami-08b51cfe96a579be1" ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1 --capabilities CAPABILITY_NAMED_IAM
+aws cloudformation create-stack --stack-name demovpc-1 --template-body file://csye6225-infra.yml --parameters ParameterKey=DNSDomain,ParameterValue="prod.ebenezerwilliams.me." ParameterKey=EnvRunning,ParameterValue="prod" ParameterKey=AmiImageId,ParameterValue="ami-0535925c33eb26de3" ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1 --capabilities CAPABILITY_NAMED_IAM
 
 
 ```
@@ -90,8 +90,7 @@ aws cloudformation create-stack --stack-name demovpc-1 --template-body file://cs
 - To set up second instance
 
 ```
-
-aws cloudformation create-stack --stack-name demovpc-2 --template-body file://csye6225-infra.yml --parameters ParameterKey=S3BucketRegion,ParameterValue=".prod.ebenezerwilliams.me" ParameterKey=AmiImageId,ParameterValue="ami-08b51cfe96a579be1" ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1 --capabilities CAPABILITY_NAMED_IAM
+aws cloudformation create-stack --stack-name demovpc-2 --template-body file://csye6225-infra.yml --parameters ParameterKey=DNSDomain,ParameterValue="prod.ebenezerwilliams.me." ParameterKey=EnvRunning,ParameterValue="prod" ParameterKey=AmiImageId,ParameterValue="ami-0535925c33eb26de3" ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1 --capabilities CAPABILITY_NAMED_IAM
 
 
 ```
@@ -124,7 +123,8 @@ aws cloudformation delete-stack --stack-name demovpc-2 --region us-east-1
 
 ```
 
-aws cloudformation create-stack --stack-name demovpc-2 --template-body file://csye6225-infra.yml --parameters ParameterKey=AmiImageId,ParameterValue="ami-000" ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1 --capabilities CAPABILITY_NAMED_IAM
+aws cloudformation create-stack --stack-name demovpc-1 --template-body file://csye6225-infra.yml --parameters ParameterKey=DNSDomain,ParameterValue="prod.ebenezerwilliams.me." ParameterKey=EnvRunning,ParameterValue="prod" ParameterKey=AmiImageId,ParameterValue="ami-0535925c33eb26de3" ParameterKey=VPCCidrBlock,ParameterValue="10.2.0.0/16" ParameterKey=CIDRBlocSubnet1,ParameterValue="10.2.1.0/24" ParameterKey=CIDRBlocSubnet2,ParameterValue="10.2.2.0/24" ParameterKey=CIDRBlocSubnet3,ParameterValue="10.2.3.0/24" ParameterKey=AvailabilityZone1,ParameterValue="a" ParameterKey=AvailabilityZone2,ParameterValue="b" ParameterKey=AvailabilityZone3,ParameterValue="c" --region us-east-1 --capabilities CAPABILITY_NAMED_IAM
+
 
 ```
 

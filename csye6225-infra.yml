@@ -29,9 +29,15 @@ Parameters:
   AmiImageId:
     Type: String
     Default: ""
-  S3BucketRegion:
+  # S3BucketRegion:
+  #   Type: String
+  #   Default: ".prod.ebenezerwilliams.me"
+  DNSDomain:
     Type: String
-    Default: ".prod.ebenezerwilliams.me"
+    Default: "dev.ebenezerwilliams.me."
+  EnvRunning:
+    Type: String
+    Default: "prod"
 Mappings:
   AZRegions:
     us-east-1:
@@ -327,17 +333,9 @@ Resources:
           ToPort: 22
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
           FromPort: 8081
           ToPort: 8081
-          CidrIp: 0.0.0.0/0
+          SourceSecurityGroupId: !Ref myLoadBalancerSecurityGroup
       Tags:
       - Key: Name
         Value: !Sub '${AWS::StackName}-application-security-group'
@@ -363,7 +361,10 @@ Resources:
       BucketName: !Join
         - ""
         - - !Select [2, !Split [/, !Ref AWS::StackId ]]
-          - !Ref S3BucketRegion
+          - "."
+          - !Ref EnvRunning
+          - ".ebenezerwilliams.me"
+          # - !Ref S3BucketRegion
       PublicAccessBlockConfiguration: 
           BlockPublicAcls: true
           BlockPublicPolicy: true
@@ -499,50 +500,246 @@ Resources:
       Roles:
       - Ref: EC2Role
 
-  MyEC2Instance: 
-    Type: "AWS::EC2::Instance"
-    DependsOn: "RDSInstance"
-    Properties: 
-      ImageId: !Ref AmiImageId
-      InstanceType : "t2.micro"
-      DisableApiTermination : "false"
-      KeyName: "ebbyec2ami"
-      SecurityGroupIds:
-        - !Ref "myApplicationSecurityGroup"
-      SubnetId: !Ref "mysubnet1"
-      BlockDeviceMappings: 
-        - DeviceName: "/dev/xvda"
-          Ebs: 
-            VolumeType: "gp2"
-            DeleteOnTermination: "true"
-            VolumeSize: "20"
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/sh
-          cd /etc/profile.d
-          touch custom.sh               
-          echo export MYSQL_HOST=${RDSInstance.Endpoint.Address} >> custom.sh
-          echo export MYSQL_USER=csye6225 >> custom.sh
-          echo export MYSQL_PASSWORD=MyPassword123 >> custom.sh
-          echo export MYSQL_DATABASE=csye6225 >> custom.sh
-          echo export S3_BUCKETNAME=${S3Bucket} >> custom.sh
-          cd /etc/systemd/system
-          touch db.env
-          echo MYSQL_HOST=${RDSInstance.Endpoint.Address} >> db.env
-          echo MYSQL_USER=csye6225 >> db.env
-          echo MYSQL_PASSWORD=MyPassword123 >> db.env
-          echo MYSQL_DATABASE=csye6225 >> db.env
-          echo S3_BUCKETNAME=${S3Bucket} >> db.env
-      IamInstanceProfile: !Ref EC2InstanceProfile
+  myLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub '${AWS::StackName}-launch-template'
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Name: !Ref EC2InstanceProfile 
+        BlockDeviceMappings:
+        - DeviceName: /dev/xvda   # check if sda1
+          Ebs:
+            VolumeSize: 20
+            VolumeType: "gp2"    # check if gp3
+            DeleteOnTermination: true
+        ImageId: !Ref AmiImageId
+        InstanceType: t2.micro
+        KeyName: "ebbyec2ami"
+        DisableApiTermination : "false"
+        SecurityGroupIds:
+          - !Ref "myApplicationSecurityGroup"
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/sh
+            cd /etc/profile.d
+            touch custom.sh               
+            echo export MYSQL_HOST=${RDSInstance.Endpoint.Address} >> custom.sh
+            echo export MYSQL_USER=csye6225 >> custom.sh
+            echo export MYSQL_PASSWORD=MyPassword123 >> custom.sh
+            echo export MYSQL_DATABASE=csye6225 >> custom.sh
+            echo export S3_BUCKETNAME=${S3Bucket} >> custom.sh
+            cd /etc/systemd/system
+            touch db.env
+            echo MYSQL_HOST=${RDSInstance.Endpoint.Address} >> db.env
+            echo MYSQL_USER=csye6225 >> db.env
+            echo MYSQL_PASSWORD=MyPassword123 >> db.env
+            echo MYSQL_DATABASE=csye6225 >> db.env
+            echo S3_BUCKETNAME=${S3Bucket} >> db.env
+      # TagSpecifications:
+      #   - ResourceType: "instance"
+      #     Tags:
+      #         - Key: "Name"
+      #           Value: !Join
+      #             - ''
+      #             - - !Ref  "AWS::StackName"
+      #               - "-"
+      #               - 'EC2'
+  myAsgWebApp:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn:
+      - myApplicationSecurityGroup     
+    Properties:
+      AutoScalingGroupName: !Sub ${AWS::StackName}-asg-webapp
+      AvailabilityZones:
+        - !Select [0, !GetAZs '' ]
+        - !Select [1, !GetAZs '' ]
+        - !Select [2, !GetAZs '' ]
+        # !Join
+        #   - ''
+        #   - - !Ref AWS::Region
+        #     - !Ref AvailabilityZone1 
+        # !Join
+        #   - ''
+        #   - - !Ref AWS::Region
+        #     - !Ref AvailabilityZone2 
+        # !Join
+        #   - ''
+        #   - - !Ref AWS::Region
+        #     - !Ref AvailabilityZone3 
+      Cooldown: '60'
+      DesiredCapacity: '3'
+      HealthCheckGracePeriod: 90
+      #HealthCheckType: EC2        # check this
+      LaunchTemplate:
+        LaunchTemplateId: !Ref myLaunchTemplate
+        Version: !GetAtt myLaunchTemplate.LatestVersionNumber
+      # LoadBalancerNames:
+      #   - String
+      MaxSize: '5'
+      MinSize: '3'
+      NewInstancesProtectedFromScaleIn: false
       Tags:
-          -
-            Key: "Name"
-            Value: !Join
-              - ''
-              - - !Ref  "AWS::StackName"
-                - "-"
-                - 'EC2'
+        - Key: Application
+          Value: WebApp
+          PropagateAtLaunch: "true"
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-asg
+          PropagateAtLaunch: "true"
+      TargetGroupARNs:
+        - !Ref loadBalancerTargetGroup
+      VPCZoneIdentifier:
+        - !Ref mysubnet1
+        - !Ref mysubnet2
+        - !Ref mysubnet3
 
+  myAsgScaleUpPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties: 
+      AdjustmentType: "ChangeInCapacity"
+      Cooldown: "60"
+      AutoScalingGroupName: 
+        Ref: "myAsgWebApp"
+      ScalingAdjustment: 1
+
+  myAsgScaleDownPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties: 
+      AdjustmentType: "ChangeInCapacity"
+      Cooldown: "60"
+      AutoScalingGroupName: 
+        Ref: "myAsgWebApp"
+      ScalingAdjustment: -1
+
+  myCpuUsageAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmDescription: Check the Cpu utilization
+      AlarmName: myCpuUsageAlarmHigh
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 1 # check if 2
+      Threshold: 5.0 
+      AlarmActions:
+        - !Ref myAsgScaleUpPolicy
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref myAsgWebApp
+
+  myCpuUsageAlarmLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmDescription: Check the Cpu utilization less than 3
+      AlarmName: myCpuUsageAlarmLow
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 1 # check if 2
+      Threshold: 5.0 
+      AlarmActions:
+        - !Ref myAsgScaleDownPolicy
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref myAsgWebApp
+
+  myLoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Load balancer security group
+      GroupName: LoadBalancerSecurityGroup
+      VpcId:
+        Ref: myVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+      - Key: Name
+        Value: !Sub '${AWS::StackName}-loadbalancer-security-group'
+    
+  myLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn:
+      - myAsgWebApp
+      - myLoadBalancerSecurityGroup # security group needed
+    Properties:
+      IpAddressType: ipv4
+      # LoadBalancerAttributes:
+      #   - Key: idle_timeout.timeout_seconds
+      #     Value: '60'
+      Name: !Sub ${AWS::StackName}-load-balancer
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref myLoadBalancerSecurityGroup # security group needed
+      Subnets:
+        - !Ref mysubnet1
+        - !Ref mysubnet2
+        - !Ref mysubnet3
+      Tags:
+        - Key: Application
+          Value: WebApp
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-load-balancer
+      Type: application
+  
+  loadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 90
+      HealthCheckPath: '/healthz'
+      HealthCheckPort: '8081'
+      HealthCheckProtocol: 'HTTP'
+      HealthCheckTimeoutSeconds: 60
+      HealthyThresholdCount: 2
+      IpAddressType: ipv4
+      Name: !Sub ${AWS::StackName}-lb-tg
+      Port: 8081
+      Protocol: 'HTTP'
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-lb-tg
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '20'
+      TargetType: instance
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref myVPC
+
+  myAppLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: "forward"
+          TargetGroupArn: !Ref loadBalancerTargetGroup
+      LoadBalancerArn: !Ref myLoadBalancer
+      Port: 80
+      Protocol: "HTTP"
+
+
+  DNSRecord:
+    Type: AWS::Route53::RecordSetGroup
+    Properties: 
+      Comment: " DNS for application"
+      HostedZoneName: !Sub '${DNSDomain}'
+      RecordSets:
+        - Name: !Sub '${DNSDomain}'
+          Type: A
+          AliasTarget: 
+            DNSName: !GetAtt 'myLoadBalancer.DNSName'
+            HostedZoneId: !GetAtt 'myLoadBalancer.CanonicalHostedZoneID'
 
 
 Outputs:
