@@ -487,6 +487,8 @@ Resources:
               - ec2.amazonaws.com
             Action: sts:AssumeRole
       RoleName: "EC2-CSYE6225"
+      # ManagedPolicyArns:
+      #  - "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
       Tags:
       - 
         Key: Name
@@ -500,13 +502,19 @@ Resources:
       Roles:
       - Ref: EC2Role
 
+  # EC2IAMProfile:
+  #   Type: AWS::IAM::InstanceProfile
+  #   Properties:
+  #     InstanceProfileName: CodeDeployEC2Profile
+  #     Roles:
+  #       - !Ref myCDEC2ServiceRole
   myLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateName: !Sub '${AWS::StackName}-launch-template'
       LaunchTemplateData:
         IamInstanceProfile:
-          Name: !Ref EC2InstanceProfile 
+          Name: CodeDeployEC2Profile 
         BlockDeviceMappings:
         - DeviceName: /dev/xvda   # check if sda1
           Ebs:
@@ -584,7 +592,7 @@ Resources:
           Value: WebApp
           PropagateAtLaunch: "true"
         - Key: Name
-          Value: !Sub ${AWS::StackName}-asg
+          Value: "webapp-asg"
           PropagateAtLaunch: "true"
       TargetGroupARNs:
         - !Ref loadBalancerTargetGroup
@@ -668,7 +676,38 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub '${AWS::StackName}-loadbalancer-security-group'
-    
+
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: "csye6225-webapp"
+      ComputePlatform: "Server"
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-codedeploy-app'
+
+  CodeDeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties:
+      DeploymentGroupName: "csye6225-webapp-deployment"
+      ApplicationName: "csye6225-webapp"
+      DeploymentStyle:
+        DeploymentOption: "WITHOUT_TRAFFIC_CONTROL"
+        DeploymentType: "IN_PLACE"
+      DeploymentConfigName: "CodeDeployDefault.AllAtOnce"
+      AutoScalingGroups: 
+        - !Ref myAsgWebApp
+      AutoRollbackConfiguration:
+        Enabled: true
+        Events:
+          - "DEPLOYMENT_FAILURE"
+      Ec2TagFilters: 
+        - Key: "Name"
+          Type: "KEY_AND_VALUE"
+          Value: "webapp-asg"
+      ServiceRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/CodeDeployServiceRole'
+
+
   myLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     DependsOn:
