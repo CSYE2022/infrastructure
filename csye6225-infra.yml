@@ -32,6 +32,9 @@ Parameters:
   # S3BucketRegion:
   #   Type: String
   #   Default: ".prod.ebenezerwilliams.me"
+  CodeDeployBucketName:
+    Type: String
+    Default: "codedeploy.ebenezerwilliams.me"
   DNSDomain:
     Type: String
     Default: "dev.ebenezerwilliams.me."
@@ -473,32 +476,83 @@ Resources:
                     - "/*"
         PolicyName: WebAppS3
         Roles:
-          - Ref: EC2Role
+          - Ref: myCDEC2ServiceRole
 
-  EC2Role:
+  # EC2Role:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service:
+  #             - ec2.amazonaws.com
+  #           Action: sts:AssumeRole
+  #     RoleName: "EC2-CSYE6225"
+  #     # ManagedPolicyArns:
+  #     #  - "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+  #     Tags:
+  #     - 
+  #       Key: Name
+  #       Value: EC2Role
+  #     Path: "/" 
+
+  # EC2InstanceProfile:
+  #   Type: AWS::IAM::InstanceProfile
+  #   Properties:
+  #     Path: "/"
+  #     Roles:
+  #     - Ref: EC2Role
+
+  # EC2IAMProfile:
+  #   Type: AWS::IAM::InstanceProfile
+  #   Properties:
+  #     InstanceProfileName: CodeDeployEC2Profile
+  #     Roles:
+  #       - !Ref myCDEC2ServiceRole
+
+  EC2IAMProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: CodeDeployEC2Profile
+      Roles:
+        - !Ref myCDEC2ServiceRole
+  
+  # added to CodeDeployEC2S3Policy, WebAppS3Policy. added AWSCodeDeployRole
+  myCDEC2ServiceRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
               Service:
-              - ec2.amazonaws.com
-            Action: sts:AssumeRole
-      RoleName: "EC2-CSYE6225"
-      Tags:
-      - 
-        Key: Name
-        Value: EC2Role
-      Path: "/" 
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+      - 'arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole'
+      Path: /
+      RoleName: myCDEC2ServiceRole
 
-  EC2InstanceProfile:
-    Type: AWS::IAM::InstanceProfile
+  CodeDeployEC2S3Policy:
+    Type: AWS::IAM::Policy
     Properties:
-      Path: "/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "s3:Get*"
+              - "s3:List*"
+            Resource:
+              - !Sub 'arn:aws:s3:::${CodeDeployBucketName}/'
+              - !Sub 'arn:aws:s3:::${CodeDeployBucketName}/*'
+      PolicyName: "CodeDeployEC2S3"
       Roles:
-      - Ref: EC2Role
+        - !Ref myCDEC2ServiceRole
 
   myLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
@@ -506,7 +560,7 @@ Resources:
       LaunchTemplateName: !Sub '${AWS::StackName}-launch-template'
       LaunchTemplateData:
         IamInstanceProfile:
-          Name: !Ref EC2InstanceProfile 
+          Name: CodeDeployEC2Profile 
         BlockDeviceMappings:
         - DeviceName: /dev/xvda   # check if sda1
           Ebs:
@@ -584,7 +638,7 @@ Resources:
           Value: WebApp
           PropagateAtLaunch: "true"
         - Key: Name
-          Value: !Sub ${AWS::StackName}-asg
+          Value: "webapp-asg"
           PropagateAtLaunch: "true"
       TargetGroupARNs:
         - !Ref loadBalancerTargetGroup
@@ -668,7 +722,42 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub '${AWS::StackName}-loadbalancer-security-group'
-    
+
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: "csye6225-webapp"
+      ComputePlatform: "Server"
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-codedeploy-app'
+
+  CodeDeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    DependsOn:
+      - CodeDeployApplication
+      - CodeDeployServiceRole
+      - myAsgWebApp
+    Properties:
+      DeploymentGroupName: "csye6225-webapp-deployment"
+      ApplicationName: "csye6225-webapp"
+      DeploymentStyle:
+        DeploymentOption: "WITHOUT_TRAFFIC_CONTROL"
+        DeploymentType: "IN_PLACE"
+      DeploymentConfigName: "CodeDeployDefault.AllAtOnce"
+      AutoScalingGroups: 
+        - !Sub ${AWS::StackName}-asg-webapp
+      AutoRollbackConfiguration:
+        Enabled: true
+        Events:
+          - "DEPLOYMENT_FAILURE"
+      Ec2TagFilters: 
+        - Key: "Name"
+          Type: "KEY_AND_VALUE"
+          Value: "webapp-asg"
+      ServiceRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/CodeDeployServiceRole'
+
+
   myLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     DependsOn:
@@ -742,9 +831,33 @@ Resources:
             HostedZoneId: !GetAtt 'myLoadBalancer.CanonicalHostedZoneID'
 
 
+      
+
+
+
+
+  CodeDeployServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole'
+      RoleName: CodeDeployServiceRole
+
+
 Outputs:
   StackVPC:
     Description: The ID of the VPC
     Value: !Ref myVPC
     Export:
       Name: !Sub "${AWS::StackName}-VPCID"
+
+
