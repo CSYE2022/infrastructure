@@ -696,7 +696,7 @@ Resources:
         DeploymentType: "IN_PLACE"
       DeploymentConfigName: "CodeDeployDefault.AllAtOnce"
       AutoScalingGroups: 
-        - !Ref myAsgWebApp
+        - !Sub ${AWS::StackName}-asg-webapp
       AutoRollbackConfiguration:
         Enabled: true
         Events:
