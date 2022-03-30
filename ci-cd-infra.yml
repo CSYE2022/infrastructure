@@ -8,7 +8,8 @@ Parameters:
     Type: String
     Default: "ghactions-app"
 Resources:
-  # upload from github actions to s3
+
+#GH upload to S3
   GHUploadToS3Policy:
     Type: AWS::IAM::Policy
     Properties:
@@ -26,8 +27,27 @@ Resources:
               - !Sub 'arn:aws:s3:::${CodeDeployBucketName}/'
               - !Sub 'arn:aws:s3:::${CodeDeployBucketName}/*'
       PolicyName: "GHUploadToS3"
-  # github codedeploy policy for GA to call CodeDeploy
-  GHCodeDeploy:
+
+  # GHUploadToS3Policy:
+  #   Type: AWS::IAM::Policy
+  #   Properties:
+  #     Users:
+  #       - "ghactions-app"
+  #     PolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Action:
+  #             - "s3:Get*"
+  #             - "s3:List*"
+  #             - "s3:PutObject"
+  #           Resource:
+  #             - !Sub 'arn:aws:s3:::${CodeDeployBucketName}/'
+  #             - !Sub 'arn:aws:s3:::${CodeDeployBucketName}/*'
+  #     PolicyName: "GHUploadToS3"
+
+#gh code deploy permission
+  myGitCodeDeploy:
     Type: AWS::IAM::Policy
     Properties:
       Users:
@@ -42,7 +62,7 @@ Resources:
             Resource:
               - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:application:csye6225-webapp'
           - Effect: Allow
-            Action:
+            Action:  # admin access works , but no resource found
               - "codedeploy:CreateDeployment"
               - "codedeploy:GetDeployment"
             Resource:
@@ -54,8 +74,16 @@ Resources:
               - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.OneAtATime'
               - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.HalfAtATime'
               - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.AllAtOnce'
-      PolicyName: "GHCodeDeploy"
-  GHEC2Ami:
+      PolicyName: "myGitCodeDeploy"
+
+
+#  Resource:
+#               - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.OneAtATime'
+#               - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.HalfAtATime'
+#               - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.AllAtOnce'
+
+#gh packer permission
+  GitEC2Ami:
     Type: AWS::IAM::Policy
     Properties:
       Users:
@@ -100,61 +128,58 @@ Resources:
               - "ec2:TerminateInstances"
             Resource:
               - "*"
-      PolicyName: "GHEC2Ami"
-  # codedeploy ec2 s3 policy
-  CodeDeployEC2S3Policy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "s3:Get*"
-              - "s3:List*"
-            Resource:
-              - !Sub 'arn:aws:s3:::${CodeDeployBucketName}/'
-              - !Sub 'arn:aws:s3:::${CodeDeployBucketName}/*'
-      PolicyName: "CodeDeployEC2S3"
-      Roles:
-        - !Ref myCDEC2ServiceRole
-  # create code deploy service-role for ec2 instance to host the web application
-  myCDEC2ServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ec2.amazonaws.com
-            Action:
-              - 'sts:AssumeRole'
-      Path: /
-      RoleName: myCDEC2ServiceRole
-  # create codedeploy instance profile and attach it to ec2
-  # can directly add it in cyse6225-infa as well using ManagedPolicyArns
-  EC2IAMProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      InstanceProfileName: CodeDeployEC2Profile
-      Roles:
-        - !Ref myCDEC2ServiceRole
-# create service role for codedeploy
-  CodeDeployServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - codedeploy.amazonaws.com
-            Action:
-              - 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole'
-      RoleName: CodeDeployServiceRole
-    # create code deploy application
+      PolicyName: "GitEC2Ami"
+
+
+
+  # CodeDeployEC2S3Policy:
+  #   Type: AWS::IAM::Policy
+  #   Properties:
+  #     PolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Action:
+  #             - "s3:Get*"
+  #             - "s3:List*"
+  #           Resource:
+  #             - !Sub 'arn:aws:s3:::${CodeDeployBucketName}/'
+  #             - !Sub 'arn:aws:s3:::${CodeDeployBucketName}/*'
+  #     PolicyName: "CodeDeployEC2S3"
+  #     Roles:
+  #       - !Ref myCDEC2ServiceRole
+  # myCDEC2ServiceRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service:
+  #               - ec2.amazonaws.com
+  #           Action:
+  #             - 'sts:AssumeRole'
+  #     Path: /
+  #     RoleName: myCDEC2ServiceRole
+  # EC2IAMProfile:
+  #   Type: AWS::IAM::InstanceProfile
+  #   Properties:
+  #     InstanceProfileName: CodeDeployEC2Profile
+  #     Roles:
+  #       - !Ref myCDEC2ServiceRole
+  # CodeDeployServiceRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service:
+  #               - codedeploy.amazonaws.com
+  #           Action:
+  #             - 'sts:AssumeRole'
+  #     ManagedPolicyArns:
+  #       - 'arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole'
+  #     RoleName: CodeDeployServiceRole
