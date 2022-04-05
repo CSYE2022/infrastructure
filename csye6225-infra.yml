@@ -534,6 +534,7 @@ Resources:
               - 'sts:AssumeRole'
       ManagedPolicyArns:
       - 'arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole'
+      - "arn:aws:iam::aws:policy/CloudWatchAgentAdminPolicy"
       Path: /
       RoleName: myCDEC2ServiceRole
 
@@ -817,6 +818,19 @@ Resources:
       Port: 80
       Protocol: "HTTP"
 
+
+  CWLogOutputGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName : csye6225-spring2022
+      RetentionInDays: 5
+
+  CWLogOutputStream:
+    Type: AWS::Logs::LogStream
+    DependsOn: CWLogOutputGroup
+    Properties:
+      LogGroupName: "csye6225-spring2022"
+      LogStreamName: "webapp"  
 
   DNSRecord:
     Type: AWS::Route53::RecordSetGroup
