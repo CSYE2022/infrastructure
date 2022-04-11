@@ -41,6 +41,9 @@ Parameters:
   EnvRunning:
     Type: String
     Default: "prod"
+  LambdaBucketName:
+    Type: String
+    Default: "lambdacodedeploy.ebenezerwilliams.me"
 Mappings:
   AZRegions:
     us-east-1:
@@ -512,6 +515,67 @@ Resources:
   #     Roles:
   #       - !Ref myCDEC2ServiceRole
 
+  GHLambdaS3Policy:
+    Type: AWS::IAM::Policy
+    DependsOn:
+      - LambdaFunction
+    Properties:
+      Users:
+        - "ghactionslambdauser"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "s3:GetObject"
+              - "s3:ListBucket"
+              - "s3:PutObject"
+            Resource:
+              - !Sub 'arn:aws:s3:::${LambdaBucketName}/'
+              - !Sub 'arn:aws:s3:::${LambdaBucketName}/*'
+          - Effect: Allow
+            Action:
+              - "lambda:GetFunction"
+              - "lambda:UpdateFunctionCode"
+            Resource:
+              - !GetAtt LambdaFunction.Arn
+      PolicyName: "GHLambdaS3Policy"
+  # lambda policy for function
+  LambdaPolicy:
+    Type: AWS::IAM::Policy
+    DependsOn:
+      - SNSTopic
+      - DynamoTokenTbl
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "dynamodb:GetItem"
+              - "dynamodb:PutItem"
+              - "dynamodb:UpdateItem"
+            Resource:
+              - !GetAtt DynamoTokenTbl.Arn
+          - Effect: Allow
+            Action:
+              - "ses:SendEmail"
+              - "ses:SendRawEmail"
+            Resource:
+              - !Sub 'arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/${EnvRunning}.ebenezerwilliams.me'
+          - Effect: Allow
+            Action:
+              - "sns:ListTopics"
+              - "sns:CreateTopic"
+              - "sns:GetTopicAttributes"
+              - "sns:Publish"
+              - "sns:ConfirmSubscription"
+            Resource:
+              - !Ref SNSTopic
+      PolicyName: "LambdaPolicy"
+      Roles:
+        - !Ref LambdaExecutionRole
+
   EC2IAMProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -865,6 +929,102 @@ Resources:
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole'
       RoleName: CodeDeployServiceRole
+
+
+
+
+  DynamoTokenTbl:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: emailid
+          AttributeType: S
+      KeySchema:
+        - AttributeName: emailid
+          KeyType: HASH
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 20
+        WriteCapacityUnits: 20
+      TableName: emailTokenTbl
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-token-tb'
+      TimeToLiveSpecification: 
+        AttributeName: ttl
+        Enabled: true
+
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    DependsOn:
+      - LambdaFunction
+    Properties:
+      DisplayName: 'UserVerificationTopic'
+      Subscription:
+        - Endpoint: !GetAtt LambdaFunction.Arn
+          Protocol: lambda
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-sns-topic'
+      TopicName: 'UserVerificationTopic'
+  
+  LambdaSNSPermission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - SNSTopic
+    Properties: 
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Principal: sns.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn: !Ref SNSTopic
+
+  # create lambda execution role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      RoleName: lambda-execution-role
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        # - "arn:aws:iam::aws:policy/AmazonSESFullAccess"
+        # - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+
+  # create lambda function
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - LambdaExecutionRole
+    Properties:
+      Code:
+        ZipFile: exports.emailVerification = function (event, context, callback){ console.log('Test'); callback(null); }
+      Description: Lambda function for verification emails
+      Environment:
+        Variables:
+          RDSDBNAME: "cloudservicedb"
+          RDSDBUSER: "root"
+          RDSDBPASSWORD: "MyPassword123"
+          DomainName: !Sub '${EnvRunning}.ebenezerwilliams.me'
+      FunctionName: EmailVerification
+      Handler: index.emailVerification
+      MemorySize: 128
+      PackageType: Zip
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: nodejs14.x
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-lambda-emailfn'
+      Timeout: 15
+
 
 
 Outputs:
