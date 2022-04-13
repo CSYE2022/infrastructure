@@ -545,6 +545,7 @@ Resources:
     Type: AWS::IAM::Policy
     DependsOn:
       - SNSTopic
+      - DynamoDbTableUSentMails
       - DynamoTokenTbl
     Properties:
       PolicyDocument:
@@ -554,8 +555,10 @@ Resources:
             Action:
               - "dynamodb:GetItem"
               - "dynamodb:PutItem"
+              - "dynamodb:Query"
               - "dynamodb:UpdateItem"
             Resource:
+              - !GetAtt DynamoDbTableUSentMails.Arn
               - !GetAtt DynamoTokenTbl.Arn
           - Effect: Allow
             Action:
@@ -575,6 +578,7 @@ Resources:
       PolicyName: "LambdaPolicy"
       Roles:
         - !Ref LambdaExecutionRole
+        - !Ref myCDEC2ServiceRole
 
   EC2IAMProfile:
     Type: AWS::IAM::InstanceProfile
@@ -687,7 +691,7 @@ Resources:
         #   - - !Ref AWS::Region
         #     - !Ref AvailabilityZone3 
       Cooldown: '60'
-      DesiredCapacity: '3'
+      DesiredCapacity: '1'
       HealthCheckGracePeriod: 90
       #HealthCheckType: EC2        # check this
       LaunchTemplate:
@@ -695,8 +699,8 @@ Resources:
         Version: !GetAtt myLaunchTemplate.LatestVersionNumber
       # LoadBalancerNames:
       #   - String
-      MaxSize: '5'
-      MinSize: '3'
+      MaxSize: '1'
+      MinSize: '1'
       NewInstancesProtectedFromScaleIn: false
       Tags:
         - Key: Application
@@ -953,6 +957,18 @@ Resources:
       TimeToLiveSpecification: 
         AttributeName: ttl
         Enabled: true
+
+  DynamoDbTableUSentMails:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: "userId"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "userId"
+          KeyType: "HASH"
+      BillingMode: "PAY_PER_REQUEST"
+      TableName: "SentMails"
 
   SNSTopic:
     Type: AWS::SNS::Topic
