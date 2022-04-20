@@ -44,6 +44,9 @@ Parameters:
   LambdaBucketName:
     Type: String
     Default: "lambdacodedeploy.ebenezerwilliams.me"
+  SSLCert:
+    Type: String
+    Default: "arn:aws:acm:us-east-1:556795868226:certificate/15fce845-9284-44dd-8fd7-f9816555df6b"
 Mappings:
   AZRegions:
     us-east-1:
@@ -415,6 +418,8 @@ Resources:
     Properties:
       Description: "This is the parameter group for MySQL DB."
       Family: "mysql8.0"
+      Parameters: 
+        performance_schema: 1
       Tags:
           -
             Key: "Name"
@@ -443,14 +448,17 @@ Resources:
     DependsOn: 
       - "DBSubnetGroup"
       - "DatabaseSecurityGroup"
+      - "RDSCustomerManagedKey"
     Properties:
       Engine: "mysql"
-      DBInstanceClass: "db.t2.micro"
+      DBInstanceClass: "db.t3.micro"
       MultiAZ: "false"
       AllocatedStorage : "20"
       DBInstanceIdentifier: "csye6225"
       MasterUsername: "csye6225"
       MasterUserPassword: "MyPassword123"
+      StorageEncrypted: true
+      KmsKeyId: !Ref RDSCustomerManagedKey
       VPCSecurityGroups:
         - !Ref "DatabaseSecurityGroup"
       DBSubnetGroupName: !Ref DBSubnetGroup
@@ -623,6 +631,16 @@ Resources:
       Roles:
         - !Ref myCDEC2ServiceRole
 
+
+# BlockDeviceMappings:
+#         - DeviceName: "/dev/xvda"
+#           Ebs:
+#             VolumeType: "gp2"
+#             DeleteOnTermination: "true"
+#             VolumeSize: "20"
+#             Encrypted: true
+#             KmsKeyId: !GetAtt EBSKey.Arn
+
   myLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
@@ -635,6 +653,8 @@ Resources:
           Ebs:
             VolumeSize: 20
             VolumeType: "gp2"    # check if gp3
+            Encrypted: true
+            KmsKeyId: !GetAtt EBSKey.Arn
             DeleteOnTermination: true
         ImageId: !Ref AmiImageId
         InstanceType: t2.micro
@@ -883,9 +903,24 @@ Resources:
         - Type: "forward"
           TargetGroupArn: !Ref loadBalancerTargetGroup
       LoadBalancerArn: !Ref myLoadBalancer
-      Port: 80
-      Protocol: "HTTP"
+      # Port: 80
+      # Protocol: "HTTP"
+      Certificates:
+        - !Ref SSLCert
+      Port: 443
+      Protocol: "HTTPS"
 
+# AppLoadBalancerListener:
+#     Type: AWS::ElasticLoadBalancingV2::Listener
+#     Properties:
+#       DefaultActions:
+#         - Type: "forward"
+#           TargetGroupArn: !Ref AppLoadBalancerTargetGroup
+#       LoadBalancerArn: !Ref ApplicationLoadBalancer
+#       Certificates:
+#         - !Ref SSLCertificateArn
+#       Port: 443
+#       Protocol: "HTTPS"
 
   CWLogOutputGroup:
     Type: AWS::Logs::LogGroup
@@ -1041,6 +1076,84 @@ Resources:
           Value: !Sub '${AWS::StackName}-lambda-emailfn'
       Timeout: 15
 
+# ebs customer managed key
+  EBSKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: Customer managed EBS Key
+      Enabled: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: ebskey
+        Statement:
+          # for iam user permission 
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          # service-linked role
+          - Effect: Allow
+            Principal:
+              AWS:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: '*'
+          # For persistent resources allow access
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling
+            Action:
+              - kms:CreateGrant
+            Resource: '*'
+            Condition:
+              Bool:
+                kms:GrantIsForAWSResource: true
+      PendingWindowInDays: 7
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ebs-key'
+
+  # new name 
+  EBSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/ebskey
+      TargetKeyId: !Ref EBSKey
+
+  # managed Key
+  RDSCustomerManagedKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: Customer managed RDS Key
+      Enabled: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: rdskey
+        Statement:
+          # for iam user permission 
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+      PendingWindowInDays: 7
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-rds-key'
+
+  # alias for rds key
+  RDSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/rdskey
+      TargetKeyId: !Ref RDSCustomerManagedKey
 
 
 Outputs:
