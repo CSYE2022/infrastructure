@@ -906,7 +906,8 @@ Resources:
       # Port: 80
       # Protocol: "HTTP"
       Certificates:
-        - !Ref SSLCert
+        - 
+          CertificateArn: !Ref SSLCert
       Port: 443
       Protocol: "HTTPS"
 
